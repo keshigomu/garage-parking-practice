@@ -1,0 +1,1233 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>車庫入れ・駐車練習</title>
+    <style>
+      :root {
+        --bg: #e9ede9;
+        --panel: #ffffff;
+        --panel-2: #f3f5f2;
+        --ink: #1d2621;
+        --muted: #5d6d63;
+        --line: #d3dbd3;
+        --accent: #0e7569;
+        --accent-strong: #0a5c53;
+        --accent-soft: #dcefe9;
+        --amber: #d97706;
+        --warn: #d92d20;
+        --warn-bg: #fdecea;
+        --ok: #12805c;
+        --hud-bg: rgba(255, 255, 255, 0.96);
+        --shadow: 0 10px 30px rgba(20, 35, 28, 0.18);
+        --radius: 12px;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0e1311;
+          --panel: #171e1a;
+          --panel-2: #1f2923;
+          --ink: #e6ede8;
+          --muted: #9db0a4;
+          --line: #2c3a32;
+          --accent: #2dd4bf;
+          --accent-strong: #5eead4;
+          --accent-soft: #123c36;
+          --amber: #fbbf24;
+          --warn: #ff6b5e;
+          --warn-bg: #4a1712;
+          --ok: #34d399;
+          --hud-bg: rgba(23, 30, 26, 0.96);
+          --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", Meiryo, system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      button { font: inherit; cursor: pointer; }
+      .app {
+        display: grid;
+        grid-template-columns: 348px minmax(0, 1fr);
+        height: 100dvh;
+        overflow: hidden;
+      }
+
+      /* ---------- Sidebar ---------- */
+      .sidebar {
+        background: var(--panel);
+        border-right: 1px solid var(--line);
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        z-index: 5;
+      }
+      .tabs {
+        display: flex;
+        gap: 4px;
+        padding: 10px 10px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .tab-btn {
+        flex: 1;
+        border: 1px solid transparent;
+        border-bottom: none;
+        background: transparent;
+        color: var(--muted);
+        font-weight: 700;
+        font-size: 13px;
+        padding: 9px 2px 10px;
+        border-radius: 10px 10px 0 0;
+      }
+      .tab-btn[aria-selected="true"] {
+        background: var(--panel-2);
+        color: var(--accent-strong);
+        border-color: var(--line);
+        box-shadow: inset 0 -2px 0 var(--panel-2);
+      }
+      .tab-panels { overflow-y: auto; padding: 14px 14px 20px; min-height: 0; }
+      .tab-panel { display: none; }
+      .tab-panel.active { display: block; }
+      .group { margin-bottom: 20px; }
+      .group h3 {
+        font-size: 12px;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        margin: 0 0 8px;
+        font-weight: 700;
+      }
+      .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+      .preset-btn {
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        border-radius: 9px;
+        padding: 8px 6px;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--ink);
+      }
+      .preset-btn.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
+      select {
+        width: 100%;
+        font: inherit;
+        padding: 9px 10px;
+        border-radius: 9px;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        color: var(--ink);
+      }
+      .ctl { margin-bottom: 13px; }
+      .ctl-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3px; }
+      .ctl-head label { font-weight: 600; font-size: 13px; }
+      .ctl-val { font-variant-numeric: tabular-nums; color: var(--accent-strong); font-weight: 700; font-size: 13px; white-space: nowrap; }
+      input[type="range"] { width: 100%; accent-color: var(--accent); height: 26px; margin: 0; }
+      .readout-box {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 10px 12px;
+        font-size: 13px;
+      }
+      .readout-box dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; }
+      .readout-box dt { color: var(--muted); }
+      .readout-box dd { margin: 0; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+      .seg { display: flex; gap: 5px; flex-wrap: wrap; }
+      .seg button {
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        color: var(--ink);
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 12.5px;
+        font-weight: 600;
+      }
+      .seg button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+      @media (prefers-color-scheme: dark) { .seg button.active { color: #06231f; } }
+      .dpad { display: grid; grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(3, 48px); gap: 6px; justify-content: center; margin: 8px 0 4px; }
+      .dpad button {
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        border-radius: 10px;
+        font-size: 18px;
+        color: var(--ink);
+      }
+      .dpad button:active { background: var(--accent-soft); }
+      .dpad .blank { visibility: hidden; }
+      .wide-btn {
+        width: 100%;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        color: var(--ink);
+        border-radius: 10px;
+        padding: 10px;
+        font-weight: 700;
+        margin-top: 6px;
+      }
+      .wide-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+      @media (prefers-color-scheme: dark) { .wide-btn.primary { color: #06231f; } }
+      .rot-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+      .note { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
+      kbd {
+        font-family: ui-monospace, monospace;
+        font-size: 11px;
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-bottom-width: 2px;
+        border-radius: 5px;
+        padding: 0 5px;
+      }
+
+      /* ---------- Stage ---------- */
+      .stage { position: relative; min-width: 0; min-height: 0; background: #b9c4b4; }
+      @media (prefers-color-scheme: dark) { .stage { background: #232b26; } }
+      canvas#view { display: block; width: 100%; height: 100%; touch-action: none; }
+      .banner {
+        position: absolute;
+        top: 14px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 9px 20px;
+        border-radius: 999px;
+        font-weight: 800;
+        font-size: 16px;
+        display: none;
+        white-space: nowrap;
+        box-shadow: var(--shadow);
+        z-index: 4;
+      }
+      .banner.warn { display: block; background: var(--warn); color: #fff; animation: pulse 0.7s ease-in-out infinite alternate; }
+      .banner.ok { display: block; background: var(--ok); color: #fff; }
+      @keyframes pulse { from { transform: translateX(-50%) scale(1); } to { transform: translateX(-50%) scale(1.05); } }
+      @media (prefers-reduced-motion: reduce) { .banner.warn { animation: none; } }
+      .view-tools { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; z-index: 3; }
+      .view-tools button {
+        width: 36px; height: 36px;
+        border-radius: 9px;
+        border: 1px solid var(--line);
+        background: var(--hud-bg);
+        color: var(--ink);
+        font-size: 16px;
+        font-weight: 700;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      }
+      .legend {
+        position: absolute;
+        left: 12px; top: 12px;
+        background: var(--hud-bg);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 8px 11px;
+        font-size: 11.5px;
+        color: var(--ink);
+        z-index: 3;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+      }
+      .legend div { display: flex; align-items: center; gap: 7px; margin: 2px 0; }
+      .swatch { width: 18px; height: 0; border-top: 3px solid; border-radius: 2px; flex: none; }
+      .swatch.dot { width: 9px; height: 9px; border: none; border-radius: 50%; background: #e5484d; margin: 0 4.5px; }
+
+      /* ---------- HUD ---------- */
+      .hud {
+        position: absolute;
+        left: 50%;
+        bottom: max(12px, env(safe-area-inset-bottom));
+        transform: translateX(-50%);
+        width: min(680px, calc(100% - 20px));
+        background: var(--hud-bg);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        padding: 10px 14px 12px;
+        z-index: 4;
+        backdrop-filter: blur(6px);
+      }
+      .hud-top { display: flex; align-items: center; gap: 10px; }
+      .gear { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; flex: none; }
+      .gear button {
+        border: none;
+        background: var(--panel-2);
+        color: var(--muted);
+        font-weight: 800;
+        font-size: 16px;
+        width: 46px; height: 42px;
+      }
+      .gear button.active { background: var(--accent); color: #fff; }
+      @media (prefers-color-scheme: dark) { .gear button.active { color: #06231f; } }
+      .steer-wrap { flex: 1; min-width: 0; }
+      .steer-head { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); font-weight: 700; }
+      .steer-head output { color: var(--accent-strong); font-variant-numeric: tabular-nums; }
+      .steer-track { position: relative; }
+      .steer-track::after {
+        content: "";
+        position: absolute; left: 50%; top: 2px; bottom: 2px;
+        width: 2px; background: var(--muted); opacity: 0.55; pointer-events: none;
+      }
+      .hud input[type="range"] { height: 30px; }
+      .center-btn {
+        flex: none;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        color: var(--ink);
+        border-radius: 9px;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 8px 9px;
+      }
+      .hud-bottom { display: flex; gap: 8px; margin-top: 8px; align-items: stretch; }
+      .pedal {
+        flex: 1;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        padding: 12px 6px;
+        font-weight: 800;
+        font-size: 15px;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: none;
+      }
+      .pedal.brake { background: #f6ddd9; color: #8f1d13; border-color: #e3b3ab; }
+      .pedal.accel { background: #d5ecdd; color: #0c5a36; border-color: #a9d3b8; }
+      @media (prefers-color-scheme: dark) {
+        .pedal.brake { background: #4a211c; color: #ffb4a8; border-color: #6e352d; }
+        .pedal.accel { background: #173d2a; color: #8fe3b6; border-color: #26573d; }
+      }
+      .pedal.pressed { filter: brightness(0.88); transform: translateY(1px); }
+      .speed-box {
+        flex: none;
+        min-width: 86px;
+        text-align: center;
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 5px 8px;
+      }
+      .speed-box .v { font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.15; }
+      .speed-box .u { font-size: 10.5px; color: var(--muted); font-weight: 700; }
+
+      /* ---------- Mobile layout ---------- */
+      @media (max-width: 880px) {
+        .app { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; height: 100dvh; }
+        .stage { order: 1; min-height: 46dvh; }
+        .sidebar { order: 2; border-right: none; border-top: 1px solid var(--line); max-height: 42dvh; }
+        .legend { display: none; }
+        .banner { font-size: 14px; top: 8px; }
+        .hud { bottom: 8px; padding: 8px 10px 10px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <!-- ============ Sidebar ============ -->
+      <aside class="sidebar">
+        <div class="tabs" role="tablist" aria-label="設定">
+          <button class="tab-btn" role="tab" id="tabbtn-vehicle" aria-controls="tab-vehicle" aria-selected="true">車種・車両設定</button>
+          <button class="tab-btn" role="tab" id="tabbtn-env" aria-controls="tab-env" aria-selected="false">車庫・環境</button>
+          <button class="tab-btn" role="tab" id="tabbtn-fine" aria-controls="tab-fine" aria-selected="false">微調整</button>
+        </div>
+        <div class="tab-panels">
+          <!-- ===== 車種・車両設定 ===== -->
+          <section class="tab-panel active" id="tab-vehicle" role="tabpanel" aria-labelledby="tabbtn-vehicle">
+            <div class="group">
+              <h3>プリセット車種</h3>
+              <select id="presetSelect" aria-label="プリセット車種">
+                <option value="ex30">Volvo EX30</option>
+                <option value="aura">日産 ノートオーラ</option>
+                <option value="mini">MINI Cooper SE</option>
+                <option value="brz">SUBARU BRZ</option>
+                <option value="custom">カスタム</option>
+              </select>
+              <div class="preset-grid">
+                <button class="preset-btn" data-preset="ex30">Volvo EX30</button>
+                <button class="preset-btn" data-preset="aura">ノートオーラ</button>
+                <button class="preset-btn" data-preset="mini">MINI Cooper SE</button>
+                <button class="preset-btn" data-preset="brz">SUBARU BRZ</button>
+              </div>
+            </div>
+            <div class="group">
+              <h3>車両寸法</h3>
+              <div class="ctl">
+                <div class="ctl-head"><label for="in-length">全長</label><span class="ctl-val" id="val-length"></span></div>
+                <input type="range" id="in-length" min="3200" max="5200" step="1">
+              </div>
+              <div class="ctl">
+                <div class="ctl-head"><label for="in-width">全幅</label><span class="ctl-val" id="val-width"></span></div>
+                <input type="range" id="in-width" min="1400" max="2100" step="1">
+              </div>
+              <div class="ctl">
+                <div class="ctl-head"><label for="in-wb">ホイールベース</label><span class="ctl-val" id="val-wb"></span></div>
+                <input type="range" id="in-wb" min="2000" max="3200" step="1">
+              </div>
+              <div class="ctl">
+                <div class="ctl-head"><label for="in-foh">フロントオーバーハング</label><span class="ctl-val" id="val-foh"></span></div>
+                <input type="range" id="in-foh" min="500" max="1300" step="1">
+              </div>
+              <div class="ctl">
+                <div class="ctl-head"><label for="in-turn">最小回転半径（フロント外角基準）</label><span class="ctl-val" id="val-turn"></span></div>
+                <input type="range" id="in-turn" min="4.2" max="7.5" step="0.1">
+              </div>
+            </div>
+            <div class="group">
+              <h3>算出値（アッカーマン・ジオメトリ）</h3>
+              <div class="readout-box">
+                <dl>
+                  <dt>最大切れ角（限界）</dt><dd id="ro-maxsteer">–</dd>
+                  <dt>現在の切れ角</dt><dd id="ro-steer">–</dd>
+                  <dt>後輪軸〜回転中心</dt><dd id="ro-lr">–</dd>
+                  <dt>リアオーバーハング</dt><dd id="ro-roh">–</dd>
+                </dl>
+              </div>
+              <p class="note">最大切れ角は、最小回転半径（フロント外角の軌跡半径）・ホイールベース・フロントオーバーハング・全幅から逆算しています。寸法を変えると、現在のハンドル位置のままタイヤ切れ角と旋回軌跡が即時連動します。</p>
+            </div>
+          </section>
+
+          <!-- ===== 車庫・環境 ===== -->
+          <section class="tab-panel" id="tab-env" role="tabpanel" aria-labelledby="tabbtn-env">
+            <div class="group">
+              <h3>車庫・道路寸法</h3>
+              <div class="ctl">
+                <div class="ctl-head"><label for="in-road">前面道路幅</label><span class="ctl-val" id="val-road"></span></div>
+                <input type="range" id="in-road" min="2.5" max="6.0" step="0.1">
+              </div>
+              <div class="ctl">
+                <div class="ctl-head"><label for="in-gw">車庫幅</label><span class="ctl-val" id="val-gw"></span></div>
+                <input type="range" id="in-gw" min="2.0" max="4.0" step="0.1">
+              </div>
+              <div class="ctl">
+                <div class="ctl-head"><label for="in-gd">車庫奥行き</label><span class="ctl-val" id="val-gd"></span></div>
+                <input type="range" id="in-gd" min="3.5" max="7.0" step="0.1">
+              </div>
+            </div>
+            <div class="group">
+              <h3>隣接フリースペース（空きポケット）</h3>
+              <select id="freePos" aria-label="フリースペース配置">
+                <option value="left-road">車庫の左側 (道路寄り)</option>
+                <option value="left-back">車庫の左奥</option>
+                <option value="right-road">車庫の右側 (道路寄り)</option>
+                <option value="right-back">車庫の右奥</option>
+                <option value="none">なし</option>
+              </select>
+              <div style="height:10px"></div>
+              <div class="ctl">
+                <div class="ctl-head"><label for="in-fw">フリースペース横幅</label><span class="ctl-val" id="val-fw"></span></div>
+                <input type="range" id="in-fw" min="0.4" max="2.0" step="0.1">
+              </div>
+              <div class="ctl">
+                <div class="ctl-head"><label for="in-fd">フリースペース奥行</label><span class="ctl-val" id="val-fd"></span></div>
+                <input type="range" id="in-fd" min="0.5" max="3.0" step="0.1">
+              </div>
+              <p class="note">車庫に直接隣接するL字型の空き空間です。切り返しの逃げ場として使えます。車庫との境界に壁はなく、当たり判定もないのでそのまま行き来できます。</p>
+            </div>
+            <div class="group">
+              <h3>表示</h3>
+              <div class="seg" id="guideToggle" role="group" aria-label="旋回ガイド表示">
+                <button data-guide="on" class="active">旋回ガイド ON</button>
+                <button data-guide="off">旋回ガイド OFF</button>
+              </div>
+              <p class="note">内輪差（青）・外輪差（黄）・回転中心（赤点）の表示を切り替えます。</p>
+            </div>
+            <div class="group">
+              <h3>操作ガイド</h3>
+              <p class="note">
+                <kbd>↑</kbd><kbd>W</kbd> アクセル ／ <kbd>↓</kbd><kbd>S</kbd> ブレーキ ／
+                <kbd>←</kbd><kbd>→</kbd><kbd>A</kbd><kbd>D</kbd> ハンドル ／
+                <kbd>Shift</kbd> ギア切替(D/R) ／ <kbd>R</kbd> 位置リセット。<br>
+                HUDのボタンは長押し（タッチ・マウス）でも操作できます。
+              </p>
+            </div>
+          </section>
+
+          <!-- ===== 微調整 ===== -->
+          <section class="tab-panel" id="tab-fine" role="tabpanel" aria-labelledby="tabbtn-fine">
+            <div class="group">
+              <h3>現在の位置・向き</h3>
+              <div class="readout-box">
+                <dl>
+                  <dt>位置 X（道路方向）</dt><dd id="ro-x">–</dd>
+                  <dt>位置 Y（奥行方向）</dt><dd id="ro-y">–</dd>
+                  <dt>車両の向き</dt><dd id="ro-heading">–</dd>
+                </dl>
+              </div>
+            </div>
+            <div class="group">
+              <h3>平行移動</h3>
+              <div class="seg" id="moveStepSeg" role="group" aria-label="移動ステップ">
+                <button data-step="0.01">1cm</button>
+                <button data-step="0.05">5cm</button>
+                <button data-step="0.10" class="active">10cm</button>
+                <button data-step="0.50">50cm</button>
+              </div>
+              <div class="dpad">
+                <span class="blank"></span>
+                <button id="mv-up" aria-label="上へ移動">▲</button>
+                <span class="blank"></span>
+                <button id="mv-left" aria-label="左へ移動">◀</button>
+                <span class="blank"></span>
+                <button id="mv-right" aria-label="右へ移動">▶</button>
+                <span class="blank"></span>
+                <button id="mv-down" aria-label="下へ移動">▼</button>
+                <span class="blank"></span>
+              </div>
+              <p class="note">画面上の上下左右へ、車両の向きを変えずに平行移動します（上＝車庫の奥方向）。</p>
+            </div>
+            <div class="group">
+              <h3>回転</h3>
+              <div class="seg" id="rotStepSeg" role="group" aria-label="回転ステップ">
+                <button data-step="1">1°</button>
+                <button data-step="5" class="active">5°</button>
+                <button data-step="10">10°</button>
+              </div>
+              <div class="rot-row" style="margin-top:8px">
+                <button class="wide-btn" id="rot-left" style="margin-top:0">⟲ 左回転</button>
+                <button class="wide-btn" id="rot-right" style="margin-top:0">右回転 ⟳</button>
+              </div>
+              <button class="wide-btn" id="flipBtn">車の向きを反転 (180°)</button>
+            </div>
+            <div class="group">
+              <h3>進入方向（初期位置に戻す）</h3>
+              <button class="wide-btn" id="approach180">右→左進入 (180°)</button>
+              <button class="wide-btn primary" id="approach0">左→右進入 (0°)</button>
+              <button class="wide-btn" id="resetBtn">位置リセット</button>
+            </div>
+          </section>
+        </div>
+      </aside>
+
+      <!-- ============ Stage ============ -->
+      <main class="stage" id="stage">
+        <canvas id="view"></canvas>
+        <div class="legend" aria-hidden="true">
+          <div><span class="swatch dot"></span>回転中心 (ICR)</div>
+          <div><span class="swatch" style="border-color:#2f7fe0"></span>内輪差（内側後輪）</div>
+          <div><span class="swatch" style="border-color:#e8a812"></span>外輪差（フロント外角）</div>
+        </div>
+        <div class="view-tools">
+          <button id="zoomOut" aria-label="縮小">−</button>
+          <button id="zoomIn" aria-label="拡大">＋</button>
+          <button id="zoomFit" aria-label="全体表示">⤢</button>
+        </div>
+        <div class="banner" id="banner" role="alert"></div>
+
+        <!-- ============ HUD ============ -->
+        <div class="hud">
+          <div class="hud-top">
+            <div class="gear" role="group" aria-label="ギア">
+              <button id="gearD" class="active">D</button>
+              <button id="gearR">R</button>
+            </div>
+            <div class="steer-wrap">
+              <div class="steer-head"><span>◀ 左切</span><output id="steerOut">0°</output><span>右切 ▶</span></div>
+              <div class="steer-track">
+                <input type="range" id="hud-steer" min="-100" max="100" step="1" value="0" aria-label="ハンドル">
+              </div>
+            </div>
+            <button class="center-btn" id="steerCenter">中央</button>
+          </div>
+          <div class="hud-bottom">
+            <button class="pedal brake" id="btnBrake">ブレーキ</button>
+            <div class="speed-box"><div class="v" id="speedVal">0.0</div><div class="u">km/h</div></div>
+            <button class="pedal accel" id="btnAccel">アクセル</button>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      "use strict";
+      /* ================================================================
+         車両モデル（後輪軸中心基準 / アッカーマン・バイシクルモデル）
+         世界座標: x=東(右), y=北(上=車庫奥方向), 角度は東向き0°・反時計回り正
+         ================================================================ */
+      const PRESETS = {
+        ex30: { name: "Volvo EX30",        length: 4235, width: 1835, wb: 2650, foh: 788, turn: 5.4 },
+        aura: { name: "日産 ノートオーラ", length: 4045, width: 1735, wb: 2580, foh: 830, turn: 5.2 },
+        mini: { name: "MINI Cooper SE",    length: 3860, width: 1755, wb: 2525, foh: 746, turn: 5.1 },
+        brz:  { name: "SUBARU BRZ",        length: 4265, width: 1775, wb: 2575, foh: 860, turn: 5.4 }
+      };
+
+      const veh = { length: 4.235, width: 1.835, wb: 2.650, foh: 0.788, turn: 5.4 }; // m
+      const env = { road: 3.6, gw: 2.5, gd: 4.8, freePos: "right-road", fw: 0.6, fd: 1.5 };
+      const car = { x: -3.2, y: -1.8, theta: 0, v: 0 }; // 初期: 左側道路上・右向き(0°)
+      let gear = "D";
+      let steerNorm = 0;            // -1(左切最大) .. +1(右切最大) ※スライダー右=+ 
+      let showGuides = true;
+      let colliding = false;
+      let parked = false;
+      let zoom = 1;
+
+      const $ = (id) => document.getElementById(id);
+      const hudSteer = $("hud-steer");
+
+      /* --- 最小回転半径(フロント外角基準)から最大切れ角を逆算 ---
+         R_out^2 = (WB+FOH)^2 + (Lr + W/2)^2  →  Lr = sqrt(R^2-(WB+FOH)^2) - W/2
+         maxSteer = atan(WB / Lr)                                        */
+      function rearToICR_atMax() {
+        const lon = veh.wb + veh.foh;
+        const inner = Math.max(veh.turn * veh.turn - lon * lon, 0.04);
+        return Math.max(Math.sqrt(inner) - veh.width / 2, 0.4);
+      }
+      function maxSteerAngle() { return Math.atan(veh.wb / rearToICR_atMax()); }
+      function steerAngle() { return -steerNorm * maxSteerAngle(); } // 数学符号: 左切(CCW)正
+      function rearOverhang() { return veh.length - veh.wb - veh.foh; }
+      function trackHalf() { return Math.max(veh.width / 2 - 0.16, 0.3); }
+
+      /* ================================================================
+         走行可能エリア & 衝突判定
+         ================================================================ */
+      function freeRect() {
+        if (env.freePos === "none") return null;
+        const hw = env.gw / 2;
+        switch (env.freePos) {
+          case "left-road":  return { x0: -hw - env.fw, x1: -hw, y0: 0, y1: env.fd };
+          case "left-back":  return { x0: -hw - env.fw, x1: -hw, y0: env.gd - env.fd, y1: env.gd };
+          case "right-road": return { x0: hw, x1: hw + env.fw, y0: 0, y1: env.fd };
+          case "right-back": return { x0: hw, x1: hw + env.fw, y0: env.gd - env.fd, y1: env.gd };
+        }
+        return null;
+      }
+      function drivableRects() {
+        const rects = [
+          { x0: -11, x1: 11, y0: -env.road, y1: 0 },                       // 前面道路
+          { x0: -env.gw / 2, x1: env.gw / 2, y0: 0, y1: env.gd }           // 車庫
+        ];
+        const f = freeRect();
+        if (f) rects.push(f);
+        return rects;
+      }
+      function pointInRects(x, y, rects, eps) {
+        for (const r of rects) {
+          if (x >= r.x0 - eps && x <= r.x1 + eps && y >= r.y0 - eps && y <= r.y1 + eps) return true;
+        }
+        return false;
+      }
+      function carCorners(cx, cy, th) {
+        const c = Math.cos(th), s = Math.sin(th);
+        const f = veh.wb + veh.foh, r = -rearOverhang(), hw = veh.width / 2;
+        const local = [[f, hw], [f, -hw], [r, -hw], [r, hw]];
+        return local.map(([lx, ly]) => ({ x: cx + lx * c - ly * s, y: cy + lx * s + ly * c }));
+      }
+      /* --- 当たり判定の形状 ---
+         描画される車体は四隅が半径0.17mの角丸矩形。以前は尖った矩形の
+         四隅で判定していたため、描画では角が丸く壁との隙間が見える位置
+         でも、見えない角のはみ出し（最大で約7cm）で接触判定になっていた。
+         判定も描画と同じ角丸形状を多角形化して使う。 */
+      function carBodyPoly(cx, cy, th) {
+        const c = Math.cos(th), s = Math.sin(th);
+        const shrink = 0.002; // 壁際を滑る際の計算誤差の吸収（2mm）
+        const f = veh.wb + veh.foh - shrink, r = -rearOverhang() + shrink, hw = veh.width / 2 - shrink;
+        const rad = Math.max(Math.min(0.17, hw - 0.01, (f - r) / 2 - 0.01), 0.01);
+        const centers = [
+          { x: f - rad, y: hw - rad, a: 0 },              // 前・左の角
+          { x: r + rad, y: hw - rad, a: Math.PI / 2 },    // 後・左の角
+          { x: r + rad, y: -hw + rad, a: Math.PI },       // 後・右の角
+          { x: f - rad, y: -hw + rad, a: -Math.PI / 2 }   // 前・右の角
+        ];
+        const pts = [];
+        for (const cn of centers) {
+          for (let k = 0; k <= 4; k++) {
+            const a = cn.a + (k / 4) * (Math.PI / 2);
+            const lx = cn.x + rad * Math.cos(a), ly = cn.y + rad * Math.sin(a);
+            pts.push({ x: cx + lx * c - ly * s, y: cy + lx * s + ly * c });
+          }
+        }
+        return pts;
+      }
+      /* 壁の線分一覧（描画している壁と同一の位置・開口）。
+         車庫入口とフリースペースの開口部には線分を作らない。 */
+      function wallSegments() {
+        const hw = env.gw / 2, gd = env.gd;
+        const f = freeRect();
+        const segs = [];
+        const seg = (x0, y0, x1, y1) => segs.push({ a: { x: x0, y: y0 }, b: { x: x1, y: y1 } });
+        // 前面の壁（y=0）: 車庫入口・ポケット開口の分だけ開いている
+        seg(-11, 0, env.freePos === "left-road" ? f.x0 : -hw, 0);
+        seg(env.freePos === "right-road" ? f.x1 : hw, 0, 11, 0);
+        // 車庫の側壁: フリースペースとの共有辺の範囲は開口にする
+        const side = (wx, isLeft) => {
+          if (f && env.freePos.startsWith("left") === isLeft) {
+            if (f.y0 > 0.001) seg(wx, 0, wx, f.y0);
+            if (f.y1 < gd - 0.001) seg(wx, f.y1, wx, gd);
+          } else {
+            seg(wx, 0, wx, gd);
+          }
+        };
+        side(-hw, true);
+        side(hw, false);
+        // 車庫の奥壁
+        seg(-hw, gd, hw, gd);
+        // フリースペースの壁（外側の縦壁と、奥／手前の横壁）
+        if (f) {
+          if (env.freePos.startsWith("left")) {
+            seg(f.x0, f.y0, f.x0, f.y1);
+            const wy = env.freePos === "left-road" ? f.y1 : f.y0;
+            seg(f.x0, wy, f.x1, wy);
+          } else {
+            seg(f.x1, f.y0, f.x1, f.y1);
+            const wy = env.freePos === "right-road" ? f.y1 : f.y0;
+            seg(f.x0, wy, f.x1, wy);
+          }
+        }
+        return segs;
+      }
+      function segCross(p, p2, q, q2) {
+        const EPS = 1e-9;
+        const cross = (ox, oy, ax, ay, bx, by) => (ax - ox) * (by - oy) - (ay - oy) * (bx - ox);
+        const d1 = cross(q.x, q.y, q2.x, q2.y, p.x, p.y);
+        const d2 = cross(q.x, q.y, q2.x, q2.y, p2.x, p2.y);
+        const d3 = cross(p.x, p.y, p2.x, p2.y, q.x, q.y);
+        const d4 = cross(p.x, p.y, p2.x, p2.y, q2.x, q2.y);
+        if (((d1 > EPS && d2 < -EPS) || (d1 < -EPS && d2 > EPS)) &&
+            ((d3 > EPS && d4 < -EPS) || (d3 < -EPS && d4 > EPS))) return true;
+        const between = (v, a, b) => v >= Math.min(a, b) - EPS && v <= Math.max(a, b) + EPS;
+        const onSeg = (a, b, pt) => between(pt.x, a.x, b.x) && between(pt.y, a.y, b.y);
+        if (Math.abs(d1) <= EPS && onSeg(q, q2, p)) return true;
+        if (Math.abs(d2) <= EPS && onSeg(q, q2, p2)) return true;
+        if (Math.abs(d3) <= EPS && onSeg(p, p2, q)) return true;
+        if (Math.abs(d4) <= EPS && onSeg(p, p2, q2)) return true;
+        return false;
+      }
+      function checkCollision() {
+        const rects = drivableRects();
+        const poly = carBodyPoly(car.x, car.y, car.theta);
+        // 車体輪郭の全頂点が走行可能エリア内にあるか
+        for (const p of poly) if (!pointInRects(p.x, p.y, rects, 0)) return true;
+        // 車体の辺が壁の線分と交差していないか
+        // （頂点が内側でも、辺が入口の角を切り取るケースを拾う）
+        const walls = wallSegments();
+        for (let i = 0; i < poly.length; i++) {
+          const a = poly[i], b = poly[(i + 1) % poly.length];
+          for (const w of walls) if (segCross(a, b, w.a, w.b)) return true;
+        }
+        return false;
+      }
+      function checkParked() {
+        const g = { x0: -env.gw / 2, x1: env.gw / 2, y0: 0, y1: env.gd };
+        return carCorners(car.x, car.y, car.theta).every(p =>
+          p.x > g.x0 + 0.02 && p.x < g.x1 - 0.02 && p.y > g.y0 + 0.02 && p.y < g.y1 - 0.02);
+      }
+      /* ================================================================
+         入力（キーボード / HUDボタン / スライダー）
+         ================================================================ */
+      const keys = {};
+      let pedalAccel = false, pedalBrake = false;
+      const GAME_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "KeyW", "KeyA", "KeyS", "KeyD", "Space"];
+      window.addEventListener("keydown", (e) => {
+        if (GAME_KEYS.includes(e.code)) {
+          const tag = (e.target.tagName || "").toLowerCase();
+          if (tag !== "input" && tag !== "select" && tag !== "textarea") e.preventDefault();
+          keys[e.code] = true;
+        }
+        if (e.code === "ShiftLeft" || e.code === "ShiftRight") { if (!e.repeat) setGear(gear === "D" ? "R" : "D"); }
+        if (e.code === "KeyR" && !e.repeat) {
+          const tag = (e.target.tagName || "").toLowerCase();
+          if (tag !== "input" && tag !== "select" && tag !== "textarea") setApproach(0);
+        }
+      });
+      window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+      window.addEventListener("blur", () => { for (const k in keys) keys[k] = false; pedalAccel = pedalBrake = false; });
+
+      function bindPedal(el, set) {
+        const on = (e) => { e.preventDefault(); set(true); el.classList.add("pressed"); };
+        const off = () => { set(false); el.classList.remove("pressed"); };
+        el.addEventListener("pointerdown", on);
+        el.addEventListener("pointerup", off);
+        el.addEventListener("pointerleave", off);
+        el.addEventListener("pointercancel", off);
+        el.addEventListener("contextmenu", (e) => e.preventDefault());
+      }
+      bindPedal($("btnAccel"), (v) => pedalAccel = v);
+      bindPedal($("btnBrake"), (v) => pedalBrake = v);
+
+      function setGear(g) {
+        gear = g;
+        $("gearD").classList.toggle("active", g === "D");
+        $("gearR").classList.toggle("active", g === "R");
+      }
+      $("gearD").addEventListener("click", () => setGear("D"));
+      $("gearR").addEventListener("click", () => setGear("R"));
+      hudSteer.addEventListener("input", () => { steerNorm = hudSteer.value / 100; });
+      $("steerCenter").addEventListener("click", () => { steerNorm = 0; hudSteer.value = 0; });
+
+      /* ================================================================
+         物理シミュレーション（後輪軸中心・バイシクルモデル）
+         ================================================================ */
+      function stepPhysics(dt) {
+        // キーボード操舵: ハンドルスライダーと連動
+        const steerRate = 1.7;
+        if (keys["ArrowLeft"] || keys["KeyA"]) steerNorm = Math.max(-1, steerNorm - steerRate * dt);
+        if (keys["ArrowRight"] || keys["KeyD"]) steerNorm = Math.min(1, steerNorm + steerRate * dt);
+        if ((keys["ArrowLeft"] || keys["KeyA"] || keys["ArrowRight"] || keys["KeyD"])) hudSteer.value = Math.round(steerNorm * 100);
+
+        const accelIn = pedalAccel || keys["ArrowUp"] || keys["KeyW"];
+        const brakeIn = pedalBrake || keys["ArrowDown"] || keys["KeyS"] || keys["Space"];
+        const dirSign = gear === "D" ? 1 : -1;
+        const maxSpeed = gear === "D" ? 2.4 : 1.7;
+        if (brakeIn) {
+          const dec = 3.6 * dt;
+          car.v = Math.abs(car.v) <= dec ? 0 : car.v - Math.sign(car.v) * dec;
+        } else if (accelIn) {
+          car.v += dirSign * 1.7 * dt;
+          car.v = Math.max(-maxSpeed, Math.min(maxSpeed, car.v));
+          if (Math.sign(car.v) !== dirSign && car.v !== 0) car.v = Math.max(-maxSpeed, Math.min(maxSpeed, car.v));
+        } else {
+          const drag = 0.9 * dt;
+          car.v = Math.abs(car.v) <= drag ? 0 : car.v - Math.sign(car.v) * drag;
+        }
+        if (car.v !== 0) {
+          const delta = steerAngle();
+          car.x += car.v * Math.cos(car.theta) * dt;
+          car.y += car.v * Math.sin(car.theta) * dt;
+          car.theta += (car.v / veh.wb) * Math.tan(delta) * dt;
+          car.theta = Math.atan2(Math.sin(car.theta), Math.cos(car.theta));
+        }
+        colliding = checkCollision();
+        parked = !colliding && checkParked();
+      }
+
+      /* ================================================================
+         描画
+         ================================================================ */
+      const canvas = $("view");
+      const ctx = canvas.getContext("2d");
+      let CW = 0, CH = 0, SCALE = 40, OX = 0, OY = 0;
+      function resize() {
+        const r = canvas.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.max(1, Math.round(r.width * dpr));
+        canvas.height = Math.max(1, Math.round(r.height * dpr));
+        CW = r.width; CH = r.height;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      new ResizeObserver(resize).observe(canvas);
+      const dark = () => window.matchMedia("(prefers-color-scheme: dark)").matches;
+      function viewTransform() {
+        const halfW = CW / Math.max(CH, 1) < 1.05 ? 6.3 : 8.8; // 縦長画面では横を絞って車庫を大きく
+        const x0 = -halfW, x1 = halfW;
+        const y0 = -env.road - 1.5, y1 = env.gd + 1.3;
+        SCALE = Math.min(CW / (x1 - x0), CH / (y1 - y0)) * zoom;
+        OX = CW / 2 - ((x0 + x1) / 2) * SCALE;
+        OY = CH / 2 + ((y0 + y1) / 2) * SCALE;
+      }
+      const SX = (x) => OX + x * SCALE;
+      const SY = (y) => OY - y * SCALE;
+      function rectW(x0, y0, x1, y1, fill) {
+        ctx.fillStyle = fill;
+        ctx.fillRect(SX(x0), SY(y1), (x1 - x0) * SCALE, (y1 - y0) * SCALE);
+      }
+      function arcWorld(cx, cy, r, aFrom, aTo) {
+        ctx.beginPath();
+        if (aTo > aFrom) ctx.arc(SX(cx), SY(cy), r * SCALE, -aFrom, -aTo, true);
+        else ctx.arc(SX(cx), SY(cy), r * SCALE, -aFrom, -aTo, false);
+      }
+      function drawScene() {
+        viewTransform();
+        const dk = dark();
+        // 敷地（走行不可エリア）
+        ctx.fillStyle = dk ? "#262e29" : "#bfcbb8";
+        ctx.fillRect(0, 0, CW, CH);
+        // 建物側（車庫の奥・左右）
+        rectW(-8.8, env.gd, 8.8, env.gd + 1.3, dk ? "#31302a" : "#cfc4ae");
+        rectW(-8.8, 0, -env.gw / 2, env.gd, dk ? "#31302a" : "#cfc4ae");
+        rectW(env.gw / 2, 0, 8.8, env.gd, dk ? "#31302a" : "#cfc4ae");
+        // 前面道路
+        rectW(-8.8, -env.road, 8.8, 0, dk ? "#3a4045" : "#5b6167");
+        // 車庫床
+        rectW(-env.gw / 2, 0, env.gw / 2, env.gd, dk ? "#4a4d4a" : "#d9d7cd");
+        // フリースペース
+        const f = freeRect();
+        if (f) {
+          rectW(f.x0, f.y0, f.x1, f.y1, dk ? "#44544a" : "#b9d2bd");
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(SX(f.x0), SY(f.y1), (f.x1 - f.x0) * SCALE, (f.y1 - f.y0) * SCALE);
+          ctx.clip();
+          ctx.strokeStyle = dk ? "rgba(255,255,255,0.20)" : "rgba(30,60,40,0.25)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          for (let d = -3; d < 4; d += 0.35) {
+            ctx.moveTo(SX(f.x0 + d), SY(f.y0));
+            ctx.lineTo(SX(f.x0 + d + (f.y1 - f.y0)), SY(f.y1));
+          }
+          ctx.stroke();
+          ctx.restore();
+          ctx.save();
+          ctx.strokeStyle = dk ? "#7fae8d" : "#4d7d58";
+          ctx.setLineDash([5, 4]);
+          ctx.strokeRect(SX(f.x0), SY(f.y1), (f.x1 - f.x0) * SCALE, (f.y1 - f.y0) * SCALE);
+          ctx.restore();
+        }
+        // 1mグリッド（道路・車庫内）
+        ctx.save();
+        ctx.strokeStyle = dk ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.16)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let gx = -8; gx <= 8; gx++) { ctx.moveTo(SX(gx), SY(-env.road)); ctx.lineTo(SX(gx), SY(0)); }
+        for (let gy = Math.ceil(-env.road); gy <= 0; gy++) { ctx.moveTo(SX(-8.8), SY(gy)); ctx.lineTo(SX(8.8), SY(gy)); }
+        ctx.stroke();
+        ctx.strokeStyle = dk ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.08)";
+        ctx.beginPath();
+        for (let gx = -2; gx <= 2; gx++) { ctx.moveTo(SX(gx), SY(0)); ctx.lineTo(SX(gx), SY(env.gd)); }
+        for (let gy = 0; gy <= Math.floor(env.gd); gy++) { ctx.moveTo(SX(-env.gw / 2), SY(gy)); ctx.lineTo(SX(env.gw / 2), SY(gy)); }
+        ctx.stroke();
+        ctx.restore();
+        // 道路センターライン（破線）
+        ctx.save();
+        ctx.strokeStyle = "rgba(255,255,255,0.55)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([14, 12]);
+        ctx.beginPath();
+        ctx.moveTo(SX(-8.8), SY(-env.road / 2));
+        ctx.lineTo(SX(8.8), SY(-env.road / 2));
+        ctx.stroke();
+        ctx.restore();
+        // 壁（車庫の両側・奥、前面の建物ライン）
+        ctx.save();
+        ctx.strokeStyle = dk ? "#101312" : "#3c4145";
+        ctx.lineWidth = Math.max(4, 0.14 * SCALE);
+        ctx.lineCap = "square";
+        const hw = env.gw / 2;
+        ctx.beginPath();
+        ctx.moveTo(SX(-8.8), SY(0)); ctx.lineTo(SX(-hw - (env.freePos === "left-road" ? env.fw : 0)), SY(0));
+        ctx.moveTo(SX(hw + (env.freePos === "right-road" ? env.fw : 0)), SY(0)); ctx.lineTo(SX(8.8), SY(0));
+        // 車庫側壁: フリースペースとの共有辺の範囲は壁を描かず開口にする（当たり判定もなし）
+        const sideWall = (wx, side) => {
+          if (f && env.freePos.startsWith(side)) {
+            if (f.y0 > 0) { ctx.moveTo(SX(wx), SY(0)); ctx.lineTo(SX(wx), SY(f.y0)); }
+            if (f.y1 < env.gd) { ctx.moveTo(SX(wx), SY(f.y1)); ctx.lineTo(SX(wx), SY(env.gd)); }
+          } else {
+            ctx.moveTo(SX(wx), SY(0)); ctx.lineTo(SX(wx), SY(env.gd));
+          }
+        };
+        sideWall(-hw, "left");
+        sideWall(hw, "right");
+        ctx.moveTo(SX(-hw), SY(env.gd)); ctx.lineTo(SX(hw), SY(env.gd));
+        ctx.stroke();
+        // ポケットの壁
+        if (f) {
+          ctx.lineWidth = Math.max(3, 0.09 * SCALE);
+          ctx.beginPath();
+          if (env.freePos.startsWith("left")) {
+            ctx.moveTo(SX(f.x0), SY(f.y0 === 0 ? f.y1 : f.y0));
+            ctx.lineTo(SX(f.x0), SY(f.y0 === 0 ? f.y0 : f.y1));
+            ctx.moveTo(SX(f.x0), SY(env.freePos === "left-road" ? f.y1 : f.y0));
+            ctx.lineTo(SX(f.x1), SY(env.freePos === "left-road" ? f.y1 : f.y0));
+          } else {
+            ctx.moveTo(SX(f.x1), SY(f.y0)); ctx.lineTo(SX(f.x1), SY(f.y1));
+            ctx.moveTo(SX(f.x0), SY(env.freePos === "right-road" ? f.y1 : f.y0));
+            ctx.lineTo(SX(f.x1), SY(env.freePos === "right-road" ? f.y1 : f.y0));
+          }
+          ctx.stroke();
+        }
+        ctx.restore();
+        // ラベル
+        ctx.save();
+        ctx.fillStyle = dk ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.9)";
+        ctx.font = "700 12px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("前面道路 " + env.road.toFixed(1) + " m", SX(-6.4), SY(-env.road + 0.35));
+        ctx.fillStyle = dk ? "rgba(255,255,255,0.65)" : "rgba(40,45,40,0.65)";
+        ctx.fillText("車庫 " + env.gw.toFixed(1) + " m × " + env.gd.toFixed(1) + " m", SX(0), SY(env.gd - 0.3));
+        if (f) {
+          ctx.fillStyle = dk ? "rgba(220,255,225,0.8)" : "rgba(30,70,40,0.8)";
+          ctx.font = "700 10px sans-serif";
+          ctx.fillText("フリー", SX((f.x0 + f.x1) / 2), SY((f.y0 + f.y1) / 2) + 3);
+        }
+        ctx.restore();
+
+        drawGuides();
+        drawCar();
+      }
+
+      function drawGuides() {
+        if (!showGuides) return;
+        const delta = steerAngle();
+        if (Math.abs(delta) < 0.006) return;
+        const Lr = veh.wb / Math.tan(delta); // 符号付き: 正=左側にICR
+        const lx = -Math.sin(car.theta), ly = Math.cos(car.theta); // 左方向単位ベクトル
+        const icr = { x: car.x + lx * Lr, y: car.y + ly * Lr };
+        const aLr = Math.abs(Lr);
+        const rInner = Math.max(aLr - trackHalf(), 0.05);                    // 内側後輪
+        const rOuter = Math.sqrt(Math.pow(veh.wb + veh.foh, 2) + Math.pow(aLr + veh.width / 2, 2)); // フロント外角
+        const rRear = aLr;                                                    // 後輪軸中心
+        const a0 = Math.atan2(car.y - icr.y, car.x - icr.x);
+        const dirSign = (gear === "D" ? 1 : -1) * Math.sign(delta);           // 進行方向の回転符号
+        const sweep = 2.3;
+        ctx.save();
+        ctx.lineWidth = 1;
+        // 全円（薄く）
+        ctx.strokeStyle = "rgba(47,127,224,0.20)";
+        ctx.beginPath(); ctx.arc(SX(icr.x), SY(icr.y), rInner * SCALE, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = "rgba(232,168,18,0.20)";
+        ctx.beginPath(); ctx.arc(SX(icr.x), SY(icr.y), rOuter * SCALE, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = "rgba(140,150,145,0.30)";
+        ctx.setLineDash([4, 5]);
+        ctx.beginPath(); ctx.arc(SX(icr.x), SY(icr.y), rRear * SCALE, 0, Math.PI * 2); ctx.stroke();
+        ctx.setLineDash([]);
+        // 進行方向の弧（濃く）
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = "#2f7fe0";
+        arcWorld(icr.x, icr.y, rInner, a0 - dirSign * 0.45, a0 + dirSign * sweep); ctx.stroke();
+        ctx.strokeStyle = "#e8a812";
+        arcWorld(icr.x, icr.y, rOuter, a0 - dirSign * 0.45, a0 + dirSign * sweep); ctx.stroke();
+        // 後輪軸線の延長（ICR方向）
+        ctx.strokeStyle = "rgba(229,72,77,0.45)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(SX(car.x - lx * Math.sign(Lr) * veh.width * 0.7), SY(car.y - ly * Math.sign(Lr) * veh.width * 0.7));
+        ctx.lineTo(SX(icr.x), SY(icr.y));
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // 回転中心点（赤点）
+        ctx.fillStyle = "#e5484d";
+        ctx.beginPath(); ctx.arc(SX(icr.x), SY(icr.y), 5.5, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.arc(SX(icr.x), SY(icr.y), 5.5, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = dk2text();
+        ctx.font = "700 11px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("回転中心", SX(icr.x), SY(icr.y) - 10);
+        ctx.restore();
+        function dk2text() { return dark() ? "rgba(255,255,255,0.85)" : "rgba(160,30,30,0.9)"; }
+      }
+
+      function drawCar() {
+        const dk = dark();
+        const f = veh.wb + veh.foh, r = -rearOverhang(), hw = veh.width / 2;
+        ctx.save();
+        ctx.translate(SX(car.x), SY(car.y));
+        ctx.rotate(-car.theta);
+        const S = SCALE;
+        // 影
+        ctx.fillStyle = "rgba(0,0,0,0.22)";
+        roundRectPath( (r + 0.06) * S, (-hw + 0.06) * S, (f - r) * S, veh.width * S, 0.16 * S);
+        ctx.fill();
+        // 車体（この座標系では x=前方, y=左側）
+        const grad = ctx.createLinearGradient(r * S, 0, f * S, 0);
+        if (colliding) { grad.addColorStop(0, "#e0584e"); grad.addColorStop(1, "#c93327"); }
+        else if (parked) { grad.addColorStop(0, "#3fae7c"); grad.addColorStop(1, "#23825a"); }
+        else { grad.addColorStop(0, "#4a7fb5"); grad.addColorStop(1, "#2f5d8f"); }
+        ctx.fillStyle = grad;
+        roundRectPath(r * S, -hw * S, (f - r) * S, veh.width * S, 0.17 * S);
+        ctx.fill();
+        ctx.strokeStyle = dk ? "rgba(255,255,255,0.5)" : "rgba(15,30,45,0.55)";
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+        // キャビン（ガラス）／ルーフ
+        // 以前はキャビンとルーフの前後が逆で、人が乗るスペースが車の
+        // 後ろ（バック）側に寄って描かれ、前向きに座っていないように
+        // 見えていた。車体中心を基準に前後を反転し、乗員スペース
+        // （ルーフ）を前寄せ、長いガラス面を後ろ側に回す。
+        // ※車体・タイヤ・ヘッドライト等の前後（進行方向）は変更しない。
+        const bodyC = ((veh.wb + veh.foh) - rearOverhang()) / 2; // 車体中心（後輪軸基準, m）
+        const mirrorX = (xm) => 2 * bodyC - xm;                  // 車体中心で前後反転
+        ctx.fillStyle = dk ? "rgba(190,225,240,0.85)" : "rgba(205,232,244,0.92)";
+        const cabF = mirrorX(-rearOverhang() * 0.45 + veh.wb * 0.08) * S;
+        const cabR = mirrorX(veh.wb + veh.foh * 0.35) * S;
+        roundRectPath(cabR, -hw * 0.78 * S, (cabF - cabR), veh.width * 0.78 * S, 0.12 * S);
+        ctx.fill();
+        // ルーフ
+        ctx.fillStyle = colliding ? "rgba(255,210,200,0.85)" : "rgba(240,246,250,0.88)";
+        const roofF = mirrorX(veh.wb * 0.05) * S, roofR = mirrorX(veh.wb * 0.72) * S;
+        roundRectPath(roofR, -hw * 0.7 * S, (roofF - roofR), veh.width * 0.7 * S, 0.1 * S);
+        ctx.fill();
+        // フロント方向マーカー（ヘッドライト）
+        ctx.fillStyle = "#ffe9a8";
+        ctx.fillRect((f - 0.09) * S, -hw * S + 0.10 * S, 0.07 * S, 0.26 * S);
+        ctx.fillRect((f - 0.09) * S, hw * S - 0.36 * S, 0.07 * S, 0.26 * S);
+        ctx.fillStyle = "#ff8f86";
+        ctx.fillRect((r + 0.02) * S, -hw * S + 0.10 * S, 0.06 * S, 0.24 * S);
+        ctx.fillRect((r + 0.02) * S, hw * S - 0.34 * S, 0.06 * S, 0.24 * S);
+        // タイヤ（前輪はアッカーマン個別角）
+        const delta = steerAngle();
+        const th = trackHalf();
+        const wLen = 0.64, wWid = 0.21;
+        const wheelAngles = wheelAngleMap(delta);
+        drawWheel(veh.wb, th, wheelAngles.left);
+        drawWheel(veh.wb, -th, wheelAngles.right);
+        drawWheel(0, th, 0);
+        drawWheel(0, -th, 0);
+        function drawWheel(ax, lat, ang) {
+          ctx.save();
+          ctx.translate(ax * S, -lat * S);
+          ctx.rotate(-ang);
+          ctx.fillStyle = "#14181a";
+          roundRectPath(-wLen / 2 * S, -wWid / 2 * S, wLen * S, wWid * S, 0.05 * S);
+          ctx.fill();
+          ctx.fillStyle = "#9aa4ab";
+          ctx.fillRect(-0.16 * S, -0.045 * S, 0.32 * S, 0.09 * S);
+          ctx.restore();
+        }
+        ctx.restore();
+      }
+      function wheelAngleMap(delta) {
+        if (Math.abs(delta) < 0.0005) return { left: 0, right: 0 };
+        const Lr = veh.wb / Math.tan(delta), th = trackHalf();
+        return {
+          left: Math.atan(veh.wb / (Lr - th)),
+          right: Math.atan(veh.wb / (Lr + th))
+        };
+      }
+      function roundRectPath(x, y, w, h, rad) {
+        ctx.beginPath();
+        ctx.moveTo(x + rad, y);
+        ctx.arcTo(x + w, y, x + w, y + h, rad);
+        ctx.arcTo(x + w, y + h, x, y + h, rad);
+        ctx.arcTo(x, y + h, x, y, rad);
+        ctx.arcTo(x, y, x + w, y, rad);
+        ctx.closePath();
+      }
+
+      /* ================================================================
+         UI バインド（タブ / プリセット / スライダー / 微調整）
+         ================================================================ */
+      document.querySelectorAll(".tab-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".tab-btn").forEach((b) => b.setAttribute("aria-selected", "false"));
+          btn.setAttribute("aria-selected", "true");
+          document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+          $(btn.getAttribute("aria-controls")).classList.add("active");
+        });
+      });
+
+      const fmtM = (v, d = 2) => v.toFixed(d) + " m";
+      const fmtMM = (v) => Math.round(v) + " mm";
+      function syncVehicleInputs() {
+        $("in-length").value = Math.round(veh.length * 1000);
+        $("in-width").value = Math.round(veh.width * 1000);
+        $("in-wb").value = Math.round(veh.wb * 1000);
+        $("in-foh").value = Math.round(veh.foh * 1000);
+        $("in-turn").value = veh.turn;
+        syncVehicleLabels();
+      }
+      function syncVehicleLabels() {
+        $("val-length").textContent = fmtMM(veh.length * 1000);
+        $("val-width").textContent = fmtMM(veh.width * 1000);
+        $("val-wb").textContent = fmtMM(veh.wb * 1000);
+        $("val-foh").textContent = fmtMM(veh.foh * 1000);
+        $("val-turn").textContent = fmtM(veh.turn, 1);
+      }
+      function markCustom() {
+        $("presetSelect").value = "custom";
+        document.querySelectorAll(".preset-btn").forEach((b) => b.classList.remove("active"));
+      }
+      function applyPreset(key) {
+        const p = PRESETS[key]; if (!p) return;
+        veh.length = p.length / 1000; veh.width = p.width / 1000;
+        veh.wb = p.wb / 1000; veh.foh = p.foh / 1000; veh.turn = p.turn;
+        $("presetSelect").value = key;
+        document.querySelectorAll(".preset-btn").forEach((b) => b.classList.toggle("active", b.dataset.preset === key));
+        syncVehicleInputs();
+        colliding = checkCollision();
+      }
+      $("presetSelect").addEventListener("change", (e) => { if (e.target.value !== "custom") applyPreset(e.target.value); });
+      document.querySelectorAll(".preset-btn").forEach((b) => b.addEventListener("click", () => applyPreset(b.dataset.preset)));
+      const vehBind = [["in-length", "length", 1000], ["in-width", "width", 1000], ["in-wb", "wb", 1000], ["in-foh", "foh", 1000], ["in-turn", "turn", 1]];
+      vehBind.forEach(([id, key, div]) => {
+        $(id).addEventListener("input", (e) => { veh[key] = parseFloat(e.target.value) / div; markCustom(); syncVehicleLabels(); colliding = checkCollision(); });
+      });
+
+      function syncEnvLabels() {
+        $("val-road").textContent = fmtM(env.road, 1);
+        $("val-gw").textContent = fmtM(env.gw, 1);
+        $("val-gd").textContent = fmtM(env.gd, 1);
+        $("val-fw").textContent = fmtM(env.fw, 1);
+        $("val-fd").textContent = fmtM(env.fd, 1);
+      }
+      [["in-road", "road"], ["in-gw", "gw"], ["in-gd", "gd"], ["in-fw", "fw"], ["in-fd", "fd"]].forEach(([id, key]) => {
+        $(id).addEventListener("input", (e) => { env[key] = parseFloat(e.target.value); syncEnvLabels(); colliding = checkCollision(); });
+      });
+      $("in-road").value = env.road; $("in-gw").value = env.gw; $("in-gd").value = env.gd;
+      $("in-fw").value = env.fw; $("in-fd").value = env.fd;
+      $("freePos").value = env.freePos;
+      $("freePos").addEventListener("change", (e) => { env.freePos = e.target.value; colliding = checkCollision(); });
+      syncEnvLabels();
+
+      $("guideToggle").querySelectorAll("button").forEach((b) => {
+        b.addEventListener("click", () => {
+          showGuides = b.dataset.guide === "on";
+          $("guideToggle").querySelectorAll("button").forEach((x) => x.classList.toggle("active", x === b));
+        });
+      });
+
+      /* --- 微調整 --- */
+      let moveStep = 0.10, rotStep = 5;
+      function segBind(id, fn) {
+        $(id).querySelectorAll("button").forEach((b) => {
+          b.addEventListener("click", () => {
+            $(id).querySelectorAll("button").forEach((x) => x.classList.toggle("active", x === b));
+            fn(parseFloat(b.dataset.step));
+          });
+        });
+      }
+      segBind("moveStepSeg", (v) => moveStep = v);
+      segBind("rotStepSeg", (v) => rotStep = v);
+      function nudge(dx, dy) { car.x += dx; car.y += dy; car.v = 0; colliding = checkCollision(); }
+      $("mv-up").addEventListener("click", () => nudge(0, moveStep));
+      $("mv-down").addEventListener("click", () => nudge(0, -moveStep));
+      $("mv-left").addEventListener("click", () => nudge(-moveStep, 0));
+      $("mv-right").addEventListener("click", () => nudge(moveStep, 0));
+      function rotate(deg) { car.theta += deg * Math.PI / 180; car.theta = Math.atan2(Math.sin(car.theta), Math.cos(car.theta)); colliding = checkCollision(); }
+      $("rot-left").addEventListener("click", () => rotate(rotStep));
+      $("rot-right").addEventListener("click", () => rotate(-rotStep));
+      $("flipBtn").addEventListener("click", () => rotate(180));
+      function setApproach(deg) {
+        car.theta = deg * Math.PI / 180;
+        car.x = deg === 180 ? 3.2 : -3.2;
+        car.y = -env.road / 2;
+        car.v = 0;
+        colliding = checkCollision();
+      }
+      $("approach180").addEventListener("click", () => setApproach(180));
+      $("approach0").addEventListener("click", () => setApproach(0));
+      $("resetBtn").addEventListener("click", () => setApproach(0));
+
+      $("zoomIn").addEventListener("click", () => zoom = Math.min(2.6, zoom * 1.2));
+      $("zoomOut").addEventListener("click", () => zoom = Math.max(0.5, zoom / 1.2));
+      $("zoomFit").addEventListener("click", () => zoom = 1);
+
+      /* ================================================================
+         表示更新 & メインループ
+         ================================================================ */
+      const banner = $("banner");
+      function updateHud() {
+        const dDeg = steerAngle() * 180 / Math.PI;
+        const dirTxt = Math.abs(steerNorm) < 0.01 ? "0°" : (steerNorm > 0 ? "右 " : "左 ") + Math.abs(dDeg).toFixed(0) + "°";
+        $("steerOut").textContent = dirTxt;
+        $("speedVal").textContent = (Math.abs(car.v) * 3.6).toFixed(1);
+        $("ro-maxsteer").textContent = (maxSteerAngle() * 180 / Math.PI).toFixed(1) + "°";
+        $("ro-steer").textContent = Math.abs(dDeg) < 0.05 ? "0.0°（直進）" : (steerNorm > 0 ? "右 " : "左 ") + Math.abs(dDeg).toFixed(1) + "°";
+        $("ro-lr").textContent = Math.abs(steerAngle()) < 0.006 ? "∞（直進）" : Math.abs(veh.wb / Math.tan(steerAngle())).toFixed(2) + " m";
+        $("ro-roh").textContent = fmtMM(rearOverhang() * 1000);
+        $("ro-x").textContent = fmtM(car.x) ;
+        $("ro-y").textContent = fmtM(car.y);
+        let hd = car.theta * 180 / Math.PI; if (hd < 0) hd += 360;
+        $("ro-heading").textContent = hd.toFixed(0) + "°";
+        if (colliding) { banner.className = "banner warn"; banner.textContent = "⚠️ 接触注意！"; }
+        else if (parked) { banner.className = "banner ok"; banner.textContent = "駐車完了！車庫内に収まりました"; }
+        else { banner.className = "banner"; banner.textContent = ""; }
+      }
+
+      let lastT = performance.now();
+      function loop(now) {
+        const dt = Math.min((now - lastT) / 1000, 0.05);
+        lastT = now;
+        stepPhysics(dt);
+        drawScene();
+        updateHud();
+        requestAnimationFrame(loop);
+      }
+      applyPreset("ex30");
+      resize();
+      requestAnimationFrame(loop);
+</script>
+  </body>
+</html>
